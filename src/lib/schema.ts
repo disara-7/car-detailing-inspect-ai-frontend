@@ -7,7 +7,7 @@ export const CATEGORIES = ["door","wheel","bonnet","roof","bumper","boot","glass
 export const CategorySchema = z.enum(CATEGORIES);
 
 export const AssessRequestSchema = z.object({
-  turnstileToken: z.string().min(1),
+  turnstileToken: z.string().min(1).optional(), // only required when the backend has TURNSTILE_SECRET set
   parts: z.array(z.object({
     category: CategorySchema,
     images: z.array(z.string().min(100)).min(1).max(4), // base64 JPEG, no "data:" prefix

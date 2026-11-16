@@ -2,7 +2,7 @@
 
 A mobile-first web app where customers upload photos of their car, grouped by part. An AI backend scores how much detailing the car needs, and the app shows an overall score, per-part results and recommended services.
 
-- **Stack:** Next.js 16 (App Router, static export), React 19, TypeScript (strict), Tailwind CSS v4, Zod 4, Cloudflare Turnstile (`@marsidev/react-turnstile`)
+- **Stack:** Next.js 16 (App Router, static export), React 19, TypeScript (strict), Tailwind CSS v4, Zod 4
 - **Hosting:** Cloudflare Pages (static files only: no server runtime, API routes or Server Actions)
 - **Backend:** a separate repo (a Cloudflare Worker). This repo only calls its HTTP API.
 
@@ -28,17 +28,16 @@ npm run dev                  # http://localhost:3000
 
 All are `NEXT_PUBLIC_*`, so they are **inlined at build time**. Changing them means rebuilding.
 
-| Variable                         | Purpose                                                                                                                                                     |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_API_URL`            | Base URL of the backend Worker, no trailing slash. The app POSTs to `${NEXT_PUBLIC_API_URL}/api/assess`.                                                    |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile site key. In development, use Cloudflare's test key `1x00000000000000000000AA`, which always passes (the backend needs the matching test secret). |
-| `NEXT_PUBLIC_USE_MOCK`           | `true` skips the network and Turnstile, and returns realistic fake data after 2 seconds.                                                                    |
+| Variable               | Purpose                                                                                                  |
+| ---------------------- | -------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`  | Base URL of the backend Worker, no trailing slash. The app POSTs to `${NEXT_PUBLIC_API_URL}/api/assess`. |
+| `NEXT_PUBLIC_USE_MOCK` | `true` skips the network and returns realistic fake data after 2 seconds.                                |
 
 ## Mock mode
 
 With `NEXT_PUBLIC_USE_MOCK=true` you can build the whole UI without the backend:
 
-- No Turnstile widget is shown, and no network requests are made.
+- No network requests are made.
 - Photos are still validated and resized in the browser, so the real image pipeline runs.
 - With two or more parts, the second part comes back with `photoQuality: "poor"`, so you can see the "clearer photo" notice.
 - `recommendedServices` contains duplicates on purpose, to exercise the de-duplication.
@@ -69,10 +68,9 @@ OpenNext and fail on a static export.
    - **Deploy command:** `npx wrangler deploy`
    - The Worker's name must match `name` in `wrangler.jsonc`.
 3. Under **Settings → Build → Variables and secrets**, add `NEXT_PUBLIC_API_URL`,
-   `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `NEXT_PUBLIC_USE_MOCK=false` and `NODE_VERSION=22`. They must be
-   **build** variables, not runtime variables, because Next.js inlines them at build time.
-4. In **Turnstile**, add the `*.workers.dev` hostname (and any custom domain) to the widget's allowed hostnames.
-5. Redeploy after changing any variable.
+   `NEXT_PUBLIC_USE_MOCK=false` and `NODE_VERSION=22`. They must be **build** variables, not
+   runtime variables, because Next.js inlines them at build time.
+4. Redeploy after changing any variable.
 
 Manual deploy from your machine: `npm run build && npx wrangler deploy`.
 
@@ -85,9 +83,8 @@ Manual deploy from your machine: `npm run build && npx wrangler deploy`.
    - Build command: `npm run build`
    - Build output directory: `out`
    - Environment variable `NODE_VERSION` = `22` (Next 16 needs Node 20.9 or later)
-4. Under **Settings → Environment variables**, add `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `NEXT_PUBLIC_USE_MOCK=false` for Production. Preview deployments can use mock mode or the test site key.
-5. In **Turnstile**, add the Pages domain (and any custom domain) to the widget's allowed hostnames.
-6. Redeploy after changing any variable, because they are baked in at build time.
+4. Under **Settings → Environment variables**, add `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_USE_MOCK=false` for Production. Preview deployments can use mock mode.
+5. Redeploy after changing any variable, because they are baked in at build time.
 
 ## How it works
 
@@ -107,16 +104,16 @@ src/
 ```
 
 - **Image prep:** happens as soon as a photo is added, so decode failures (for example HEIC in browsers that can't read it) appear on that part's card right away. The photo is removed and the rest of the form keeps working. Non-images and files over 15 MB are rejected before decoding. Submitting waits for any resizes still in progress ("Preparing photos…"), then sends only parts that have photos.
-- **Turnstile:** tokens are single-use, so the widget resets after every attempt. Submit and "Try again" are disabled until a fresh token arrives.
+- **No bot check:** the Turnstile widget was removed. Requests are sent without a `turnstileToken` (optional in the contract). The backend protects itself with a per-IP rate limit (5 assessments per minute, `RATE_LIMITED` on excess). If Turnstile is ever re-enabled on the backend (`TURNSTILE_SECRET`), the widget must be added back here.
 - **Object URLs:** thumbnail URLs are revoked when a photo is removed, when a photo fails to decode, on "Start over", and when the page unmounts. "Edit photos" keeps them.
 - **Theming:** colours are CSS variables in `src/app/globals.css`, with separate light and dark values (`prefers-color-scheme`), exposed as Tailwind tokens (`bg-brand`, `text-fg-muted`, `text-level-heavy`, …). To rebrand, change `--brand`, `--brand-strong`, `--brand-fg` and `--brand-soft`.
-- **No external assets:** system font stack, inline SVG icons. The only third-party request is the Turnstile script, and only when mock mode is off.
+- **No external assets:** system font stack, inline SVG icons, and no third-party scripts.
 
 ## Decisions made where the brief was open
 
 - **Score direction:** 0 means clean and 100 means heavy detailing needed. The UI says "Higher scores mean more detailing is needed". Per-part labels use the same bands as the overall label (<25 clean, <50 light, <75 moderate, otherwise heavy). This is a frontend assumption, because the API only returns a label for the overall score.
 - **Request timeout:** 90 seconds, reported as a retryable error.
-- **Retryable errors:** the "Try again" button shows for network errors, timeouts, `RATE_LIMITED`, `AI_FAILED`, `INTERNAL` and invalid responses. It is hidden for `INVALID_REQUEST`, `BOT_CHECK_FAILED` (which asks the user to refresh) and `PAYLOAD_TOO_LARGE` (which asks them to remove photos).
+- **Retryable errors:** the "Try again" button shows for network errors, timeouts, `RATE_LIMITED`, `AI_FAILED`, `INTERNAL` and invalid responses. It is hidden for `INVALID_REQUEST`, `BOT_CHECK_FAILED` (only possible if the backend re-enables Turnstile; asks the user to refresh) and `PAYLOAD_TOO_LARGE` (which asks them to remove photos).
 - **Missing HTTP error body:** if a non-200 response has no valid error body, 429 maps to `RATE_LIMITED`, 413 maps to `PAYLOAD_TOO_LARGE`, and anything else gets the generic message.
 - **EXIF orientation:** applied when decoding (`createImageBitmap(..., { imageOrientation: "from-image" })`), so portrait phone photos aren't sent sideways. Transparent PNGs are flattened onto white.
 - **Empty MIME type:** files with an empty MIME type but an image extension (some HEIC uploads) are allowed through to the decoder rather than rejected up front.

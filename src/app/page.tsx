@@ -1,6 +1,5 @@
 "use client";
 
-import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { useEffect, useRef, useState } from "react";
 import { CategorySlot } from "@/components/CategorySlot";
 import { ErrorBanner } from "@/components/ErrorBanner";
@@ -14,7 +13,7 @@ import {
   type AssessResult,
 } from "@/lib/api";
 import { MAX_PHOTOS_PER_CATEGORY } from "@/lib/categories";
-import { API_URL, TURNSTILE_SITE_KEY, USE_MOCK } from "@/lib/config";
+import { API_URL, USE_MOCK } from "@/lib/config";
 import { LABEL_INFO } from "@/lib/format";
 import { mockAssess } from "@/lib/mock";
 import {
@@ -57,13 +56,6 @@ export default function Home() {
   const pending = useRef(new Map<string, Promise<void>>());
   const [slotErrors, setSlotErrors] = useState<SlotErrors>({});
 
-  const [token, setToken] = useState<string | null>(null);
-  const [botCheckFailed, setBotCheckFailed] = useState(false);
-  /** Turnstile client error code, e.g. "110200". 110xxx/400xxx are site configuration problems. */
-  const [botCheckCode, setBotCheckCode] = useState<string | null>(null);
-  const botCheckMisconfigured = botCheckCode !== null && /^(110|400)/.test(botCheckCode);
-  const turnstileRef = useRef<TurnstileInstance>(undefined);
-
   const [stage, setStage] = useState<Stage>("idle");
   const inFlight = useRef(false);
   const [error, setError] = useState<AppError | null>(null);
@@ -82,8 +74,7 @@ export default function Home() {
 
   const busy = stage !== "idle";
   const total = countPhotos(photos);
-  const needsTurnstile = !USE_MOCK;
-  const canSubmit = total > 0 && !busy && (!needsTurnstile || token !== null);
+  const canSubmit = total > 0 && !busy;
 
   function setSlotError(category: Category, messages: string[], append = false) {
     setSlotErrors((prev) => ({
@@ -200,8 +191,8 @@ export default function Home() {
       setStage("analysing");
       setAnnouncement("Analysing your photos. This can take up to 30 seconds.");
       const outcome = USE_MOCK
-        ? await runMock({ turnstileToken: "mock", parts })
-        : await assess({ turnstileToken: token ?? "", parts }, { apiUrl: API_URL });
+        ? await runMock({ parts })
+        : await assess({ parts }, { apiUrl: API_URL });
 
       if (outcome.ok) {
         setResult(outcome.data);
@@ -217,11 +208,6 @@ export default function Home() {
     } finally {
       inFlight.current = false;
       setStage("idle");
-      if (needsTurnstile) {
-        // Turnstile tokens are single-use: get a fresh one for the next attempt.
-        setToken(null);
-        turnstileRef.current?.reset();
-      }
     }
   }
 
@@ -244,14 +230,6 @@ export default function Home() {
 
   let hint = "";
   if (total === 0) hint = "Add at least one photo to continue.";
-  else if (needsTurnstile && !token && !busy && !botCheckFailed)
-    hint = "Completing a quick security check…";
-
-  function retryBotCheck() {
-    setBotCheckFailed(false);
-    setToken(null);
-    turnstileRef.current?.reset();
-  }
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
@@ -303,49 +281,6 @@ export default function Home() {
                 retryDisabled={!canSubmit}
                 onDismiss={() => setError(null)}
               />
-            )}
-
-            {needsTurnstile &&
-              (TURNSTILE_SITE_KEY ? (
-                <Turnstile
-                  ref={turnstileRef}
-                  siteKey={TURNSTILE_SITE_KEY}
-                  onSuccess={(t) => {
-                    setToken(t);
-                    setBotCheckFailed(false);
-                  }}
-                  onExpire={() => setToken(null)}
-                  onError={(code) => {
-                    setToken(null);
-                    setBotCheckFailed(true);
-                    setBotCheckCode(code ? String(code) : null);
-                    console.warn("Turnstile error", code);
-                  }}
-                  options={{ theme: "auto", size: "flexible" }}
-                />
-              ) : (
-                <p className="text-sm text-danger">
-                  Security check isn&apos;t configured (missing NEXT_PUBLIC_TURNSTILE_SITE_KEY).
-                </p>
-              ))}
-
-            {needsTurnstile && botCheckFailed && (
-              <p role="alert" className="text-sm text-danger">
-                {botCheckMisconfigured
-                  ? "The security check isn't set up correctly for this site. Please let us know."
-                  : "The security check couldn't complete. Ad blockers, VPNs or strict privacy settings can cause this."}{" "}
-                Your photos are kept.
-                {botCheckCode && (
-                  <span className="text-fg-muted"> (Error {botCheckCode})</span>
-                )}{" "}
-                <button
-                  type="button"
-                  onClick={retryBotCheck}
-                  className="font-semibold underline underline-offset-2"
-                >
-                  Try again
-                </button>
-              </p>
             )}
 
             <button
