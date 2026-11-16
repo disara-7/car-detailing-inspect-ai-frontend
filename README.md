@@ -57,7 +57,26 @@ A "Mock mode" badge appears in the header so a mock build is never mistaken for 
 
 The backend must allow CORS from the Pages domain (and `http://localhost:3000` for development).
 
-## Deploying to Cloudflare Pages
+## Deploying to Cloudflare Workers (static assets)
+
+`wrangler.jsonc` deploys the `out/` folder as a static-assets-only Worker (no Worker code). It also
+stops Wrangler's framework auto-configuration, which would otherwise try to build Next.js with
+OpenNext and fail on a static export.
+
+1. In the Cloudflare dashboard, go to **Workers & Pages → Create → Import a repository** and pick the repo.
+2. Settings:
+   - **Build command:** `npm run build`
+   - **Deploy command:** `npx wrangler deploy`
+   - The Worker's name must match `name` in `wrangler.jsonc`.
+3. Under **Settings → Build → Variables and secrets**, add `NEXT_PUBLIC_API_URL`,
+   `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `NEXT_PUBLIC_USE_MOCK=false` and `NODE_VERSION=22`. They must be
+   **build** variables, not runtime variables, because Next.js inlines them at build time.
+4. In **Turnstile**, add the `*.workers.dev` hostname (and any custom domain) to the widget's allowed hostnames.
+5. Redeploy after changing any variable.
+
+Manual deploy from your machine: `npm run build && npx wrangler deploy`.
+
+### Alternative: Cloudflare Pages
 
 1. Push this repo to GitHub or GitLab.
 2. In the Cloudflare dashboard, go to **Workers & Pages → Create → Pages → Connect to Git** and pick the repo.

@@ -1,0 +1,12 @@
+{
+  // Static-assets-only Worker: serves the Next.js static export in ./out.
+  // Having this file stops Wrangler's framework auto-config (which would try OpenNext/SSR).
+  // "name" must match the Worker name in the Cloudflare dashboard.
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "car-detailing-inspect-ai-frontend",
+  "compatibility_date": "2026-11-16",
+  "assets": {
+    "directory": "./out",
+    "not_found_handling": "404-page",
+  },
+}
