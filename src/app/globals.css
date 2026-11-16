@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Change --brand (and --brand-strong / --brand-fg) to rebrand the app.
+ * Each token has a light and dark value; Tailwind utilities (bg-brand, text-fg, …) map to them below.
+ */
+:root {
+  color-scheme: light dark;
+
+  --brand: #0f6fde;
+  --brand-strong: #0b58b3;
+  --brand-fg: #ffffff;
+  --brand-soft: #e6f0fc;
+
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --surface-muted: #eef1f5;
+  --fg: #111827;
+  --fg-muted: #4b5563;
+  --border: #d5dbe3;
+  --ring: #0f6fde;
+
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --warning: #8a4b00;
+  --warning-soft: #fff4e0;
+
+  /* Assessment levels: AA contrast for text on --surface. */
+  --level-clean: #157a3c;
+  --level-light: #0f6f7a;
+  --level-moderate: #9a5b00;
+  --level-heavy: #b42318;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand: #4c9bf5;
+    --brand-strong: #79b5f8;
+    --brand-fg: #04162b;
+    --brand-soft: #10263f;
+
+    --bg: #0b0f14;
+    --surface: #141a22;
+    --surface-muted: #1c2430;
+    --fg: #eef2f7;
+    --fg-muted: #a7b1bf;
+    --border: #2c3644;
+    --ring: #79b5f8;
+
+    --danger: #ff8a80;
+    --danger-soft: #3a1714;
+    --warning: #ffc266;
+    --warning-soft: #33240b;
+
+    --level-clean: #5fd38d;
+    --level-light: #4fd1dc;
+    --level-moderate: #ffbf47;
+    --level-heavy: #ff8a80;
+  }
+}
+
+@theme inline {
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-soft: var(--brand-soft);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-level-clean: var(--level-clean);
+  --color-level-light: var(--level-light);
+  --color-level-moderate: var(--level-moderate);
+  --color-level-heavy: var(--level-heavy);
+
+  /* System font stack: no external font requests. */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Consistent, visible keyboard focus everywhere. */
+:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
