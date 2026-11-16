@@ -58,6 +58,7 @@ export default function Home() {
   const [slotErrors, setSlotErrors] = useState<SlotErrors>({});
 
   const [token, setToken] = useState<string | null>(null);
+  const [botCheckFailed, setBotCheckFailed] = useState(false);
   const turnstileRef = useRef<TurnstileInstance>(undefined);
 
   const [stage, setStage] = useState<Stage>("idle");
@@ -240,7 +241,14 @@ export default function Home() {
 
   let hint = "";
   if (total === 0) hint = "Add at least one photo to continue.";
-  else if (needsTurnstile && !token && !busy) hint = "Completing a quick security check…";
+  else if (needsTurnstile && !token && !busy && !botCheckFailed)
+    hint = "Completing a quick security check…";
+
+  function retryBotCheck() {
+    setBotCheckFailed(false);
+    setToken(null);
+    turnstileRef.current?.reset();
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
@@ -299,9 +307,15 @@ export default function Home() {
                 <Turnstile
                   ref={turnstileRef}
                   siteKey={TURNSTILE_SITE_KEY}
-                  onSuccess={setToken}
+                  onSuccess={(t) => {
+                    setToken(t);
+                    setBotCheckFailed(false);
+                  }}
                   onExpire={() => setToken(null)}
-                  onError={() => setToken(null)}
+                  onError={() => {
+                    setToken(null);
+                    setBotCheckFailed(true);
+                  }}
                   options={{ theme: "auto", size: "flexible" }}
                 />
               ) : (
@@ -309,6 +323,20 @@ export default function Home() {
                   Security check isn&apos;t configured (missing NEXT_PUBLIC_TURNSTILE_SITE_KEY).
                 </p>
               ))}
+
+            {needsTurnstile && botCheckFailed && (
+              <p role="alert" className="text-sm text-danger">
+                The security check couldn&apos;t complete. Ad blockers, VPNs or strict privacy
+                settings can cause this. Your photos are kept.{" "}
+                <button
+                  type="button"
+                  onClick={retryBotCheck}
+                  className="font-semibold underline underline-offset-2"
+                >
+                  Try again
+                </button>
+              </p>
+            )}
 
             <button
               type="button"
