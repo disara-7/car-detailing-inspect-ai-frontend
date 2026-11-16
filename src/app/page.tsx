@@ -59,6 +59,9 @@ export default function Home() {
 
   const [token, setToken] = useState<string | null>(null);
   const [botCheckFailed, setBotCheckFailed] = useState(false);
+  /** Turnstile client error code, e.g. "110200". 110xxx/400xxx are site configuration problems. */
+  const [botCheckCode, setBotCheckCode] = useState<string | null>(null);
+  const botCheckMisconfigured = botCheckCode !== null && /^(110|400)/.test(botCheckCode);
   const turnstileRef = useRef<TurnstileInstance>(undefined);
 
   const [stage, setStage] = useState<Stage>("idle");
@@ -312,9 +315,11 @@ export default function Home() {
                     setBotCheckFailed(false);
                   }}
                   onExpire={() => setToken(null)}
-                  onError={() => {
+                  onError={(code) => {
                     setToken(null);
                     setBotCheckFailed(true);
+                    setBotCheckCode(code ? String(code) : null);
+                    console.warn("Turnstile error", code);
                   }}
                   options={{ theme: "auto", size: "flexible" }}
                 />
@@ -326,8 +331,13 @@ export default function Home() {
 
             {needsTurnstile && botCheckFailed && (
               <p role="alert" className="text-sm text-danger">
-                The security check couldn&apos;t complete. Ad blockers, VPNs or strict privacy
-                settings can cause this. Your photos are kept.{" "}
+                {botCheckMisconfigured
+                  ? "The security check isn't set up correctly for this site. Please let us know."
+                  : "The security check couldn't complete. Ad blockers, VPNs or strict privacy settings can cause this."}{" "}
+                Your photos are kept.
+                {botCheckCode && (
+                  <span className="text-fg-muted"> (Error {botCheckCode})</span>
+                )}{" "}
                 <button
                   type="button"
                   onClick={retryBotCheck}
