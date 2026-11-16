@@ -65,7 +65,7 @@ OpenNext and fail on a static export.
 
 1. In the Cloudflare dashboard, go to **Workers & Pages → Create → Import a repository** and pick the repo.
 2. Settings:
-   - **Build command:** `npm run build`
+   - **Build command:** leave empty (`wrangler.jsonc` runs `npm run build` itself via `build.command`)
    - **Deploy command:** `npx wrangler deploy`
    - The Worker's name must match `name` in `wrangler.jsonc`.
 3. Under **Settings → Build → Variables and secrets**, add `NEXT_PUBLIC_API_URL`,

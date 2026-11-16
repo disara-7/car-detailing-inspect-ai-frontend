@@ -5,6 +5,11 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "car-detailing-inspect-ai-frontend",
   "compatibility_date": "2026-11-16",
+  // Build the static export before every `wrangler deploy`, so ./out always exists
+  // even if the dashboard's build command is empty.
+  "build": {
+    "command": "npm run build",
+  },
   "assets": {
     "directory": "./out",
     "not_found_handling": "404-page",
